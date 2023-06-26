@@ -5,6 +5,14 @@ from tkinter import messagebox
 from datetime import datetime
 import re
 
+class Usuario:
+    def __init__(self, idUsuario, nombre_usuario, contraseña, rol):
+        self.idUsuario = idUsuario
+        self.nombre_usuario = nombre_usuario
+        self.contraseña = contraseña
+        self.rol = rol
+
+
 class Tiquet:
     def __init__(self, nombre_cliente, rut_cliente, telefono_cliente, email_cliente, tipo_tiquet, criticidad, detalle_servicio, detalle_problema, area_derivacion, ejecutivo_apertura, estado, fecha_apertura, fecha_cierre, ejecutivo_cierre):
         self.idTiquet = None  # Se asignará automáticamente al guardar en la base de datos
@@ -33,22 +41,141 @@ class VentanaInicioSesion(Frame):
         self.etiqueta_contrasena = Label(self, text="Contraseña:")
         self.entrada_contrasena = Entry(self, show="*")
         self.boton_inicio_sesion = Button(self, text="Iniciar sesión", command=self.iniciar_sesion)
-        
+        self.admin()
+
         self.etiqueta_usuario.pack()
         self.entrada_usuario.pack()
         self.etiqueta_contrasena.pack()
         self.entrada_contrasena.pack()
         self.boton_inicio_sesion.pack()
-        
+
     def iniciar_sesion(self):
         usuario = self.entrada_usuario.get()
         contrasena = self.entrada_contrasena.get()
-        
-        # Verificar las credenciales (aquí debes implementar tu lógica de autenticación)
-        if usuario == "mesa" and contrasena == "1234":
-            self.master.cambiar_frame(VentanaEjecutivoMesa)
+
+        try:
+            conexion = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="",
+                database="consultenos"
+            )
+        except mysql.connector.Error as error:
+            messagebox.showerror("Error de conexión", str(error))
+            return
+
+        cursor = conexion.cursor()
+
+        # Verificar las credenciales en la base de datos
+        consulta = "SELECT rol FROM usuarios WHERE nombre_usuario = %s AND contraseña = %s"
+        valores = (usuario, contrasena)
+        cursor.execute(consulta, valores)
+        resultado = cursor.fetchone()
+
+        if resultado is not None:
+            rol = resultado[0]
+            # cambiar el nombre del rol para que coincida con el frame que debe ingresar
+            if rol == "jefe":
+                self.master.cambiar_frame(VentanaJefeMesa)
+            elif rol == "mesa":
+                self.master.cambiar_frame(VentanaEjecutivoMesa)
+            else:
+                messagebox.showerror("Error de inicio de sesión", "No tienes permisos para acceder a esta interfaz")
         else:
             messagebox.showerror("Error de inicio de sesión", "Credenciales incorrectas")
+
+        cursor.close()
+        conexion.close()
+
+    def admin(self):
+        try:
+            conexion = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="",
+                database="consultenos"
+            )
+        except mysql.connector.Error as error:
+            messagebox.showerror("Error de conexión", str(error))
+            return
+
+        cursor = conexion.cursor()
+
+        # Verificar si el usuario 'jefe' ya está creado
+        consulta = "SELECT * FROM usuarios WHERE nombre_usuario = 'jefe'"
+        cursor.execute(consulta)
+        resultado = cursor.fetchone()
+
+        if resultado is not None:
+            None
+        else:
+            # Crear el usuario 'jefe'
+            consulta = "INSERT INTO usuarios (nombre_usuario, contraseña, rol) VALUES (%s, %s, %s)"
+            valores = ("jefe", "1234", "jefe")
+            cursor.execute(consulta, valores)
+            conexion.commit()
+
+        cursor.close()
+        conexion.close()
+
+
+class VentanaRegistro(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.master.title("Registro de usuario")
+
+        self.etiqueta_nombre = Label(self, text="Nombre de usuario:")
+        self.entrada_nombre = Entry(self)
+        self.etiqueta_contrasena = Label(self, text="Contraseña:")
+        self.entrada_contrasena = Entry(self, show="*")
+        self.etiqueta_rol = Label(self, text="Rol:")
+        self.entrada_rol = Entry(self)
+        self.boton_registrar = Button(self, text="Registrar", command=self.registrar_usuario)
+
+        self.etiqueta_nombre.pack()
+        self.entrada_nombre.pack()
+        self.etiqueta_contrasena.pack()
+        self.entrada_contrasena.pack()
+        self.etiqueta_rol.pack()
+        self.entrada_rol.pack()
+        self.boton_registrar.pack()
+
+    def registrar_usuario(self):
+        nombre = self.entrada_nombre.get()
+        contraseña = self.entrada_contrasena.get()
+        rol = self.entrada_rol.get()
+
+        try:
+            conexion = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="",
+                database="consultenos"
+            )
+        except mysql.connector.Error as error:
+            messagebox.showerror("Error de conexión", str(error))
+            return
+
+        cursor = conexion.cursor()
+
+        # Insertar el nuevo usuario en la tabla
+        try:
+            consulta = "INSERT INTO usuarios (nombre_usuario, contraseña, rol) VALUES (%s, %s, %s)"
+            valores = (nombre, contraseña, rol)
+            cursor.execute(consulta, valores)
+            conexion.commit()
+        except mysql.connector.Error as error:
+            messagebox.showerror("Error al registrar usuario", str(error))
+            conexion.rollback()
+        else:
+            messagebox.showinfo("Registro exitoso", "El usuario se ha registrado correctamente")
+            self.master.cambiar_frame(VentanaJefeMesa)
+
+        cursor.close()
+        conexion.close()
+
+
 
 
 class VentanaEjecutivoMesa(Frame):
@@ -267,6 +394,135 @@ class VentanaCreacionTiquet(Frame):
         self.entrada_fecha_apertura.delete(0, END)
         self.entrada_fecha_cierre.delete(0, END)
         self.entrada_ejecutivo_cierre.delete(0, END)
+
+class VentanaJefeMesa(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.master.title("Interfaz Jefe de Mesa")
+
+        self.boton_usuarios = Button(self, text="Usuarios", command=self.mostrar_ventana_usuarios)
+        self.boton_tiquets = Button(self, text="Tiquets", command=self.mostrar_ventana_tiquets)
+        self.boton_cerrar_sesion = Button(self, text="Cerrar sesión", command=self.cerrar_sesion)
+
+        self.boton_usuarios.pack()
+        self.boton_tiquets.pack()
+        self.boton_cerrar_sesion.pack()
+
+    def mostrar_ventana_usuarios(self):
+        self.master.cambiar_frame(JefeMesaUsuarios)
+
+    def mostrar_ventana_tiquets(self):
+        self.master.cambiar_frame(VentanaInicioSesion)
+    def cerrar_sesion(self):
+        self.master.cambiar_frame(VentanaInicioSesion)
+
+class JefeMesaUsuarios(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.master.title("Gestión de Usuarios - Jefe de Mesa")
+
+        self.boton_crear_usuario = Button(self, text="Crear usuario", command=self.crear_usuario)
+        self.boton_eliminar_usuario = Button(self, text="Eliminar usuario", command=self.eliminar_usuario)
+        self.boton_volver = Button(self, text="Volver", command=self.volver)
+
+        self.boton_crear_usuario.pack()
+        self.boton_eliminar_usuario.pack()
+        self.boton_volver.pack()
+
+    def crear_usuario(self):
+        self.master.cambiar_frame(VentanaRegistro)
+
+    def eliminar_usuario(self):
+        self.master.cambiar_frame(EliminarUsuario)
+
+    def volver(self):
+        self.master.cambiar_frame(VentanaJefeMesa)
+
+class EliminarUsuario(Frame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.master.title("Eliminar Usuario")
+
+        self.lista_usuarios = Listbox(self)
+        self.boton_eliminar = Button(self, text="Eliminar", command=self.eliminar_usuario)
+        self.boton_volver = Button(self, text="Volver", command=self.volver)
+
+        self.cargar_usuarios()
+
+        self.lista_usuarios.pack()
+        self.boton_eliminar.pack()
+        self.boton_volver.pack()
+
+    def cargar_usuarios(self):
+        try:
+            conexion = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="",
+                database="consultenos"
+            )
+        except mysql.connector.Error as error:
+            messagebox.showerror("Error de conexión", str(error))
+            return
+
+        cursor = conexion.cursor()
+
+        # Obtener los usuarios de la base de datos
+        consulta = "SELECT nombre_usuario FROM usuarios"
+        cursor.execute(consulta)
+        usuarios = cursor.fetchall()
+
+        for usuario in usuarios:
+            self.lista_usuarios.insert(END, usuario[0])
+
+        cursor.close()
+        conexion.close()
+
+    def eliminar_usuario(self):
+        seleccionado = self.lista_usuarios.curselection()
+
+        if seleccionado:
+            usuario = self.lista_usuarios.get(seleccionado)
+
+            if usuario == "jefe":
+                messagebox.showwarning("Eliminar Usuario", "No se puede eliminar al usuario 'jefe'")
+                return
+
+            try:
+                conexion = mysql.connector.connect(
+                    host="localhost",
+                    user="root",
+                    password="",
+                    database="consultenos"
+                )
+            except mysql.connector.Error as error:
+                messagebox.showerror("Error de conexión", str(error))
+                return
+
+            cursor = conexion.cursor()
+
+            # Eliminar el usuario de la base de datos
+            consulta = "DELETE FROM usuarios WHERE nombre_usuario = %s"
+            valores = (usuario,)
+            cursor.execute(consulta, valores)
+            conexion.commit()
+
+            messagebox.showinfo("Eliminar Usuario", f"Usuario '{usuario}' eliminado correctamente")
+
+            cursor.close()
+            conexion.close()
+
+            self.lista_usuarios.delete(seleccionado)
+        else:
+            messagebox.showwarning("Eliminar Usuario", "Seleccione un usuario de la lista")
+
+    def volver(self):
+        self.master.cambiar_frame(VentanaJefeMesa)
+
+
 
 
 class Aplicacion(Tk):
