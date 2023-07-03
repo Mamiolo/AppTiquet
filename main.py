@@ -1,20 +1,25 @@
+from distutils.cmd import Command
+from turtle import right
 import mysql.connector
 from tkinter import *
 from tkinter.ttk import Combobox
 from tkinter import messagebox
 from datetime import datetime
+import tkinter as tk
 import re
 
 class VentanaInicioSesion(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Inicio de sesión")
-        self.etiqueta_usuario = Label(self, text="Usuario:")
+        self.etiqueta_usuario = Label(self,fg="red", bg="lightblue", text="Usuario:")
         self.entrada_usuario = Entry(self)
-        self.etiqueta_contrasena = Label(self, text="Contraseña:")
+        self.etiqueta_contrasena = Label(self,fg="red", bg="lightblue", text="Contraseña:")
         self.entrada_contrasena = Entry(self, show="*")
-        self.boton_inicio_sesion = Button(self, text="Iniciar sesión", command=self.iniciar_sesion)
+        self.boton_inicio_sesion = Button(self,background="gold", text="Iniciar sesión", command=self.iniciar_sesion)
+        self.boton_credenciales = Button(self,background="gold", text="Cambiar Credenciales", command=self.credenciales)
+        self.boton_credenciales.place()
         self.admin()
 
         self.etiqueta_usuario.pack()
@@ -22,6 +27,12 @@ class VentanaInicioSesion(Frame):
         self.etiqueta_contrasena.pack()
         self.entrada_contrasena.pack()
         self.boton_inicio_sesion.pack()
+        self.boton_credenciales.pack(expand=True, side='bottom',)
+
+
+    def credenciales(self):
+        self.master.cambiar_frame(Credenciales)
+
 
     def iniciar_sesion(self):
         usuario = self.entrada_usuario.get()
@@ -102,15 +113,96 @@ class VentanaInicioSesion(Frame):
         cursor.close()
         conexion.close()
 
+class Credenciales(Frame):
+    def __init__(self, master):
+        super().__init__(master, bg="lightblue")
+        self.master = master
+        self.master.title("Cambiar credenciales")
+
+        self.etiqueta_host = Label(self,fg="red", bg="lightblue", text="Host:")
+        self.etiqueta_host.pack()
+        self.host_entry = Entry(self)
+        self.host_entry.pack()
+
+        self.etiqueta_puerto = Label(self,fg="red", bg="lightblue", text="Puerto:")
+        self.etiqueta_puerto.pack()
+        self.port_entry = Entry(self)
+        self.port_entry.pack()
+
+        self.etiqueta_usuario = Label(self,fg="red", bg="lightblue", text="Usuario:")
+        self.etiqueta_usuario.pack()
+        self.user_entry = Entry(self)
+        self.user_entry.pack()
+
+        self.etiqueta_contrasena = Label(self,fg="red", bg="lightblue", text="Contraseña:")
+        self.etiqueta_contrasena.pack()
+        self.password_entry = Entry(self, show="*")
+        self.password_entry.pack()
+
+        self.etiqueta_database = Label(self,fg="red", bg="lightblue", text="Base de Datos:")
+        self.etiqueta_database.pack()
+        self.database_entry = Entry(self)
+        self.database_entry.pack()
+
+        self.boton_credenciales = Button(self,background="gold", text="Iniciar sesión", command=self.cambiar_credenciales)
+        self.boton_credenciales.pack()
+
+        self.boton_volver = Button(self,background="red", text="Volver", command=self.volver)
+        self.boton_volver.pack()
+    def volver(self):
+        self.master.cambiar_frame(VentanaInicioSesion)
+
+    def cambiar_credenciales(self):
+        new_host = self.host_entry.get()
+        new_port = self.port_entry.get()
+        new_user = self.user_entry.get()
+        new_password = self.password_entry.get()
+        new_database = self.database_entry.get()
+
+        # Realizar las modificaciones en las credenciales de la base de datos
+        try:
+            conexion = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password="",
+                database="consultenos"
+            )
+            conexion.database = new_database  # Seleccionar la base de datos
+
+            cursor = conexion.cursor()
+
+            # Verificar si la tabla de configuración existe
+            cursor.execute("SHOW TABLES LIKE 'configuracion'")
+            tabla_existente = cursor.fetchone()
+
+            if tabla_existente is None:
+                # Crear la tabla de configuración si no existe
+                cursor.execute("CREATE TABLE configuracion (id INT AUTO_INCREMENT PRIMARY KEY, host VARCHAR(255), port VARCHAR(255), user VARCHAR(255), password VARCHAR(255), database_name VARCHAR(255))")
+
+            # Actualizar las credenciales en la tabla de configuración
+            consulta = "INSERT INTO configuracion (id, host, port, user, password, database_name) VALUES (1, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE host=%s, port=%s, user=%s, password=%s, database_name=%s"
+            valores = (new_host, new_port, new_user, new_password, new_database, new_host, new_port, new_user, new_password, new_database)
+            cursor.execute(consulta, valores)
+            conexion.commit()
+
+            cursor.close()
+            conexion.close()
+
+            messagebox.showinfo("Credenciales cambiadas", "Las credenciales de la base de datos han sido cambiadas exitosamente.")
+
+            self.master.cambiar_frame(VentanaInicioSesion)
+
+        except mysql.connector.Error as error:
+            messagebox.showerror("Error", f"No se pudo cambiar las credenciales: {error}")
 
 class VentanaEjecutivoMesa(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Interfaz Ejecutivo Mesa")
 
-        self.boton_crear_tiquet = Button(self, text="Crear Tiquet", command=self.crear_tiquet)
-        self.boton_cerrar_sesion = Button(self, text="Cerrar sesión", command=self.cerrar_sesion)
+        self.boton_crear_tiquet = Button(self,background="gold", text="Crear Tiquet", command=self.crear_tiquet)
+        self.boton_cerrar_sesion = Button(self,background="red", text="Cerrar sesión", command=self.cerrar_sesion)
 
         self.boton_crear_tiquet.grid(row=10, column=0, pady=10)
         self.boton_cerrar_sesion.grid(row=10, column=2, pady=10)
@@ -128,7 +220,7 @@ class VentanaEjecutivoMesa(Frame):
 
 class VentanaCreacionTiquet(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Crear Tiquet")
 
@@ -140,43 +232,45 @@ class VentanaCreacionTiquet(Frame):
 
 
         # Campos de tiquet
-        self.etiqueta_nombre_cliente = Label(self, text="Nombre del cliente:")
+        self.etiqueta_nombre_cliente = Label(self,fg="red", bg="lightblue", text="Nombre del cliente:")
         self.entrada_nombre_cliente = Entry(self)
-        self.etiqueta_rut_cliente = Label(self, text="RUT del cliente:")
+        self.etiqueta_rut_cliente = Label(self,fg="red", bg="lightblue", text="RUT del cliente:")
         self.entrada_rut_cliente = Entry(self)
-        self.etiqueta_telefono_cliente = Label(self, text="Teléfono:")
+        self.etiqueta_telefono_cliente = Label(self,fg="red", bg="lightblue", text="Teléfono:")
         self.entrada_telefono_cliente = Entry(self)
-        self.etiqueta_email_cliente = Label(self, text="Correo electrónico:")
+        self.etiqueta_email_cliente = Label(self,fg="red", bg="lightblue", text="Correo electrónico:")
         self.entrada_email_cliente = Entry(self)
-        self.etiqueta_tipo_tiquet = Label(self, text="Tipo de tiquet:")
+        self.etiqueta_tipo_tiquet = Label(self, bg="lightblue",fg="red" ,text="Tipo de tiquet:")
         self.tipo_tiquet_var = StringVar()
-        self.combobox_tipo_tiquet = Combobox(self, textvariable=self.tipo_tiquet_var, values=["Felicitación", "Consulta", "Reclamo", "Problema"])
-        self.etiqueta_criticidad = Label(self, text="Criticidad:")
+        self.combobox_tipo_tiquet = Combobox(self, background="orange2", textvariable=self.tipo_tiquet_var, values=["Felicitación", "Consulta", "Reclamo", "Problema"])
+        self.combobox_tipo_tiquet.config(state="readonly")
+        self.etiqueta_criticidad = Label(self,fg="red", bg="lightblue", text="Criticidad:")
         self.entrada_criticidad = Entry(self)
-        self.etiqueta_detalle_servicio = Label(self, text="Detalle del servicio:")
+        self.etiqueta_detalle_servicio = Label(self,fg="red", bg="lightblue", text="Detalle del servicio:")
         self.entrada_detalle_servicio = Entry(self)
-        self.etiqueta_detalle_problema = Label(self, text="Detalle del problema:")
+        self.etiqueta_detalle_problema = Label(self,fg="red", bg="lightblue", text="Detalle del problema:")
         self.entrada_detalle_problema = Entry(self)
-        self.etiqueta_area_derivacion = Label(self, text="Área para derivar:")
-        self.combo_area_derivacion = Combobox(self)
+        self.etiqueta_area_derivacion = Label(self,fg="red", bg="lightblue", text="Área para derivar:")
+        self.combo_area_derivacion = Combobox(self, background="orange2",)
         self.combo_area_derivacion.config(state="readonly")
-        self.etiqueta_ejecutivo_apertura = Label(self, text="Ejecutivo que abre el tiquet:")
+        self.etiqueta_ejecutivo_apertura = Label(self,fg="red", bg="lightblue", text="Ejecutivo que abre el tiquet:")
         self.entrada_ejecutivo_apertura = Entry(self)
-        self.etiqueta_estado = Label(self, text="Estado:")
+        self.etiqueta_estado = Label(self,fg="red", bg="lightblue", text="Estado:")
         self.estado_var = StringVar()
-        self.combobox_estado = Combobox(self, textvariable=self.estado_var, values=["A resolución", "Resuelto", "No aplicable"])
-        self.etiqueta_fecha_apertura = Label(self, text="Fecha apertura:")
+        self.combobox_estado = Combobox(self, background="orange2", textvariable=self.estado_var, values=["A resolución", "Resuelto", "No aplicable"])
+        self.combobox_estado.config(state="readonly")
+        self.etiqueta_fecha_apertura = Label(self,fg="red", bg="lightblue", text="Fecha apertura:")
         self.entrada_fecha_apertura = Entry(self)
         self.entrada_fecha_apertura.insert(0, fecha_hora_actual_str)
         self.entrada_fecha_apertura.config(state="readonly")
-        self.etiqueta_fecha_cierre = Label(self, text="Fecha cierre:")
+        self.etiqueta_fecha_cierre = Label(self,fg="red", bg="lightblue", text="Fecha cierre:")
         self.entrada_fecha_cierre = Entry(self)
         self.entrada_fecha_cierre.config(state="disabled")
-        self.etiqueta_ejecutivo_cierre = Label(self, text="Ejecutivo cierre:")
+        self.etiqueta_ejecutivo_cierre = Label(self,fg="red", bg="lightblue", text="Ejecutivo cierre:")
         self.entrada_ejecutivo_cierre = Entry(self)
         self.entrada_ejecutivo_cierre.config(state="readonly")
 
-        self.boton_crear_tiquet = Button(self, text="Crear Tiquet", command=self.crear_tiquet)
+        self.boton_crear_tiquet = Button(self,background="gold", text="Crear Tiquet", command=self.crear_tiquet)
 
         # Colocar los widgets en la ventana
         self.etiqueta_nombre_cliente.grid(row=0, column=0, sticky=W)
@@ -207,7 +301,7 @@ class VentanaCreacionTiquet(Frame):
         self.entrada_fecha_cierre.grid(row=26, column=0)
         self.etiqueta_ejecutivo_cierre.grid(row=27, column=0, sticky=W)
         self.entrada_ejecutivo_cierre.grid(row=28, column=0)
-        self.boton_crear_tiquet.grid(row=29, column=0, pady=10)
+        self.boton_crear_tiquet.grid(row=29, column=0)
 
         
 
@@ -215,6 +309,12 @@ class VentanaCreacionTiquet(Frame):
 
         self.cargar_areas()
         self.cargar_nombre()
+
+        self.boton_volver = Button(self,background="red", text="Volver", command=self.volver)
+        self.boton_volver.grid(row=30, column=0)
+
+    def volver(self):
+        self.master.cambiar_frame(VentanaEjecutivoMesa)
 
 
 
@@ -317,15 +417,15 @@ class VentanaCreacionTiquet(Frame):
 
 class VentanaJefeMesa(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Interfaz Jefe de Mesa")
 
-        self.boton_usuarios = Button(self, text="Usuarios", command=self.mostrar_ventana_usuarios)
-        self.boton_areas = Button(self, text="Areas", command=self.mostrar_ventana_areas)
-        self.boton_tiquets = Button(self, text="Tiquets", command=self.mostrar_ventana_tiquets)
+        self.boton_usuarios = Button(self,background="gold", text="Usuarios", command=self.mostrar_ventana_usuarios)
+        self.boton_areas = Button(self,background="gold", text="Areas", command=self.mostrar_ventana_areas)
+        self.boton_tiquets = Button(self,background="gold", text="Tiquets", command=self.mostrar_ventana_tiquets)
 
-        self.boton_cerrar_sesion = Button(self, text="Cerrar sesión", command=self.cerrar_sesion)
+        self.boton_cerrar_sesion = Button(self,background="red", text="Cerrar sesión", command=self.cerrar_sesion)
 
 
 
@@ -349,13 +449,14 @@ class VentanaJefeMesa(Frame):
 
 class JefeMesaUsuarios(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Gestión de Usuarios - Jefe de Mesa")
 
-        self.boton_crear_usuario = Button(self, text="Crear usuario", command=self.crear_usuario)
-        self.boton_eliminar_usuario = Button(self, text="Eliminar usuario", command=self.eliminar_usuario)
-        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_crear_usuario = Button(self,background="gold", text="Crear usuario", command=self.crear_usuario)
+        self.boton_eliminar_usuario = Button(self,background="gold", text="Eliminar usuario", command=self.eliminar_usuario)
+        self.boton_volver = Button(self,background="red", text="Volver", command=self.volver)
+
 
         self.boton_crear_usuario.pack()
         self.boton_eliminar_usuario.pack()
@@ -372,29 +473,36 @@ class JefeMesaUsuarios(Frame):
 
 class VentanaRegistro(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Registro de usuario")
 
-        self.etiqueta_nombre = Label(self, text="Nombre de usuario:")
+        self.etiqueta_nombre = Label(self,fg="red", bg="lightblue", text="Nombre de usuario:")
         self.entrada_nombre = Entry(self)
-        self.etiqueta_contrasena = Label(self, text="Contraseña:")
+        self.etiqueta_contrasena = Label(self,fg="red", bg="lightblue", text="Contraseña:")
         self.entrada_contrasena = Entry(self, show="*")
-        self.etiqueta_rol = Label(self, text="Rol:")
-        self.entrada_rol = Entry(self)
-        self.etiqueta_area = Label(self, text="Seleccione el área a eliminar:")
-        self.combo_area = Combobox(self)
-        self.boton_registrar = Button(self, text="Registrar", command=self.registrar_usuario)
+        self.etiqueta_rol = Label(self,fg="red", bg="lightblue", text="Rol:")
+        self.combo_rol = Combobox(self, background="orange2",)
+        self.combo_rol["values"] = ["jefe", "mesa", "area"]
+        self.combo_rol.config(state="readonly")
+        self.etiqueta_area = Label(self,fg="red", bg="lightblue", text="Seleccione el área a eliminar:")
+        self.combo_area = Combobox(self, background="orange2",)
+        self.boton_registrar = Button(self,background="gold", text="Registrar", command=self.registrar_usuario)
 
         self.etiqueta_nombre.pack()
         self.entrada_nombre.pack()
         self.etiqueta_contrasena.pack()
         self.entrada_contrasena.pack()
         self.etiqueta_rol.pack()
-        self.entrada_rol.pack()
+        self.combo_rol.pack()
         self.etiqueta_area.pack()
         self.combo_area.pack()
         self.boton_registrar.pack()
+
+        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_volver.pack()
+    def volver(self):
+        self.master.cambiar_frame(VentanaJefeMesa)
 
 
         self.cargar_areas()
@@ -429,7 +537,7 @@ class VentanaRegistro(Frame):
     def registrar_usuario(self):
         nombre = self.entrada_nombre.get()
         contraseña = self.entrada_contrasena.get()
-        rol = self.entrada_rol.get()
+        rol = self.combo_rol.get()
         area_seleccionada = self.combo_area.get()
 
         try:
@@ -464,13 +572,13 @@ class VentanaRegistro(Frame):
 
 class EliminarUsuario(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Eliminar Usuario")
 
         self.lista_usuarios = Listbox(self, height=10)
-        self.boton_eliminar = Button(self, text="Eliminar", command=self.eliminar_usuario)
-        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_eliminar = Button(self,background="gold", text="Eliminar", command=self.eliminar_usuario)
+        self.boton_volver = Button(self,background="red", text="Volver", command=self.volver)
 
         self.cargar_usuarios()
 
@@ -545,12 +653,12 @@ class EliminarUsuario(Frame):
 
 class VentanaTiquets(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Tiquets")
 
         self.lista_tiquets = Listbox(self, height=25, width=100)
-        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_volver = Button(self,background="red", text="Volver", command=self.volver)
 
         self.cargar_tiquets()  
 
@@ -579,15 +687,21 @@ class VentanaTiquets(Frame):
 
 class VentanaAreas(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Áreas")
 
-        self.boton_crear_areas = Button(self, text="Crear áreas", command=self.crear_areas)
+        self.boton_crear_areas = Button(self,background="gold", text="Crear áreas", command=self.crear_areas)
         self.boton_crear_areas.pack()
 
-        self.boton_eliminar_areas = Button(self, text="Eliminar áreas", command=self.eliminar_areas)
+        self.boton_eliminar_areas = Button(self,background="gold", text="Eliminar áreas", command=self.eliminar_areas)
         self.boton_eliminar_areas.pack()
+
+
+        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_volver.pack()
+    def volver(self):
+        self.master.cambiar_frame(VentanaJefeMesa)
 
     def crear_areas(self):
         self.master.cambiar_frame(VentanaCrearArea)
@@ -600,17 +714,22 @@ class VentanaAreas(Frame):
 
 class VentanaCrearArea(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Áreas")
 
-        self.etiqueta_nombre = Label(self, text="Nombre del área:")
+        self.etiqueta_nombre = Label(self,fg="red", bg="lightblue", text="Nombre del área:")
         self.entrada_nombre = Entry(self)
-        self.boton_crear = Button(self, text="Crear", command=self.crear_area)
+        self.boton_crear = Button(self,background="gold", text="Crear", command=self.crear_area)
 
         self.etiqueta_nombre.pack()
         self.entrada_nombre.pack()
         self.boton_crear.pack()
+
+        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_volver.pack()
+    def volver(self):
+        self.master.cambiar_frame(VentanaJefeMesa)
 
     def crear_area(self):
         nombre_area = self.entrada_nombre.get()
@@ -657,19 +776,24 @@ class VentanaCrearArea(Frame):
 
 class VentanaEliminarArea(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Áreas")
 
-        self.etiqueta_area = Label(self, text="Seleccione el área a eliminar:")
-        self.combo_area = Combobox(self)
-        self.boton_eliminar = Button(self, text="Eliminar", command=self.eliminar_area)
+        self.etiqueta_area = Label(self,fg="red", bg="lightblue", text="Seleccione el área a eliminar:")
+        self.combo_area = Combobox(self, background="orange2",)
+        self.boton_eliminar = Button(self,background="gold", text="Eliminar", command=self.eliminar_area)
 
         self.etiqueta_area.pack()
         self.combo_area.pack()
         self.boton_eliminar.pack()
 
         self.cargar_areas()
+
+        self.boton_volver = Button(self, text="Volver", command=self.volver)
+        self.boton_volver.pack()
+    def volver(self):
+        self.master.cambiar_frame(VentanaJefeMesa)
 
     def cargar_areas(self):
         
@@ -737,17 +861,19 @@ class VentanaEliminarArea(Frame):
 
 class VentanaEjecutivoArea(Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, bg="lightblue")
         self.master = master
         self.master.title("Interfaz Área")
 
         self.lista_tiquets = Listbox(self, height=25, width=100)
-        self.boton_cargar = Button(self, text="Cargar Tiquets", command=self.cargar_tiquets)
-        self.boton_volver = Button(self, text="Cerrar Sesión", command=self.cerrar_sesion)
+        self.boton_cargar = Button(self,background="gold", text="Cargar Tiquets", command=self.cargar_tiquets)
+        self.boton_volver = Button(self,background="red", text="Cerrar Sesión", command=self.cerrar_sesion)
 
         self.lista_tiquets.pack()
         self.boton_cargar.pack()
         self.boton_volver.pack()
+
+    
 
     def cargar_tiquets(self):
         area = self.master.area
@@ -788,7 +914,8 @@ class Aplicacion(Tk):
     def __init__(self):
         super().__init__()
         self.title("Aplicación de escritorio")
-        self.geometry("1000x1000")
+        self.geometry("500x900")
+        self.config(bg="lightblue",)
         self.cambiar_frame(VentanaInicioSesion)
 
     def cambiar_frame(self, clase_frame):
