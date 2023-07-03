@@ -52,8 +52,6 @@ class VentanaInicioSesion(Frame):
         cursor.execute(consulta, valores)
         area = cursor.fetchone()
 
-        self.master.area = str(area)
-
 
         if resultado is not None:
             rol = resultado[0]
@@ -64,6 +62,7 @@ class VentanaInicioSesion(Frame):
                 self.master.cambiar_frame(VentanaEjecutivoMesa)
             elif rol == "area":
                 self.master.cambiar_frame(VentanaEjecutivoArea)
+                self.master.areas(area[0])
             else:
                 messagebox.showerror("Error de inicio de sesión", "No tienes permisos para acceder a esta interfaz")
         else:
@@ -774,6 +773,9 @@ class VentanaEjecutivoArea(Frame):
         else:
             for tiquet in tiquets:
                 self.lista_tiquets.insert(END, tiquet)
+
+
+        self.boton_cargar.config(state="disable")
 
 
     def cerrar_sesion(self):
