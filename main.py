@@ -485,8 +485,9 @@ class VentanaRegistro(Frame):
         self.combo_rol = Combobox(self, background="orange2",)
         self.combo_rol["values"] = ["jefe", "mesa", "area"]
         self.combo_rol.config(state="readonly")
-        self.etiqueta_area = Label(self,fg="red", bg="lightblue", text="Seleccione el área a eliminar:")
+        self.etiqueta_area = Label(self,fg="red", bg="lightblue", text="Seleccione el Area a ingresar:")
         self.combo_area = Combobox(self, background="orange2",)
+        self.combo_area.config(state="readonly")
         self.boton_registrar = Button(self,background="gold", text="Registrar", command=self.registrar_usuario)
 
         self.etiqueta_nombre.pack()
@@ -501,11 +502,12 @@ class VentanaRegistro(Frame):
 
         self.boton_volver = Button(self, text="Volver", command=self.volver)
         self.boton_volver.pack()
+        self.cargar_areas()
     def volver(self):
         self.master.cambiar_frame(VentanaJefeMesa)
 
 
-        self.cargar_areas()
+        
 
     def cargar_areas(self):
         try:
@@ -682,7 +684,7 @@ class VentanaTiquets(Frame):
             self.lista_tiquets.insert(END, tiquet)  
 
     def volver(self):
-        self.master.cambiar_frame(VentanaEjecutivoMesa)
+        self.master.cambiar_frame(VentanaJefeMesa)
 
 
 class VentanaAreas(Frame):
@@ -772,6 +774,8 @@ class VentanaCrearArea(Frame):
         cursor.close()
         conexion.close()
 
+        self.master.cambiar_frame(VentanaCrearArea)
+
 
 
 class VentanaEliminarArea(Frame):
@@ -818,6 +822,7 @@ class VentanaEliminarArea(Frame):
 
         # Cargar las áreas en el combo box
         self.combo_area['values'] = areas
+        self.combo_area.config(state="readonly")
 
         cursor.close()
         conexion.close()
@@ -852,6 +857,8 @@ class VentanaEliminarArea(Frame):
 
         cursor.close()
         conexion.close()
+
+        self.master.cambiar_frame(VentanaEliminarArea)
 
 
 
